@@ -1,7 +1,8 @@
-ml/data/test/
-ml/data/train/
+ml/data/raw/
 
 .idea/
 *.iml
 
 .ipynb_checkpoints
+
+venv/
