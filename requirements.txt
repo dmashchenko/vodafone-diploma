@@ -1,3 +1,7 @@
 scikit-learn==0.24
 numpy==1.19.2
 pandas==1.2.1
+plotly==4.14.3
+
+pyarrow==3.0.0
+fastparquet==0.5.0

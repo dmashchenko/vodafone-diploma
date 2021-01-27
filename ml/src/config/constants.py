@@ -10,3 +10,5 @@ config.read(os.path.split(abspath_of_this_script)[0] + '/../../../config.cfg')
 
 PROJECT_ROOT = Path(config['DEFAULT']['PROJECT_ROOT'])
 RAW_DATA_DIR = Path(config['DEFAULT']['RAW_DATA_DIR'])
+
+PREPROCESSED_DATA_DIR = PROJECT_ROOT / 'ml/data/preprocessed'
