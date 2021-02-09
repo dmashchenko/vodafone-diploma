@@ -1,22 +1,17 @@
-import numpy as np
+from dataclasses import dataclass, field
+from typing import List
+
 import pandas as pd
+
+from features.extraction import add_traff_features, statistic_columns
 
 from config.constants import PROJECT_ROOT, PREPROCESSED_DATA_DIR
 
 INDEX_COLUMN = 'abon_id'
 
 
-class DataSet(object):
-    def __init__(self):
-        self._testdf = None
-        self._traindf = None
-
-    def traindf(self):
-        if self._traindf is None:
-            self._traindf = pd.read_parquet(PREPROCESSED_DATA_DIR / 'traindf.dump')
-        return self._traindf
-
-    def testdf(self):
-        if self._testdf is None:
-            self._testdf = pd.read_parquet(PREPROCESSED_DATA_DIR / 'testdf.dump')
-        return self._testdf
+@dataclass(frozen=True)
+class DataSet:
+    testdf: pd.DataFrame = add_traff_features(pd.read_parquet(PREPROCESSED_DATA_DIR / 'testdf.dump'))
+    traindf: pd.DataFrame = add_traff_features(pd.read_parquet(PREPROCESSED_DATA_DIR / 'traindf.dump'))
+    columns: List = traindf.columns.values
