@@ -22,3 +22,9 @@ def non_empty_columns(df, nans_threshold=6):
         .reset_index().rename(columns={0: 'val', 'index': 'col_name'})
 
     return nans_percent_by_column[nans_percent_by_column.val < nans_threshold].col_name
+
+
+def correlation(df, target, threshold=0.3):
+    corr_target = df.drop(target, axis=1).apply(lambda x: x.corr(df[target]))
+    columns = corr_target[abs(corr_target) > threshold]
+    return columns.sort_values()
