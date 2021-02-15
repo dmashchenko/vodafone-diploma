@@ -19,9 +19,9 @@ resource "aws_instance" "instance" {
   vpc_security_group_ids = [
     aws_security_group.instance.id]
   //  user_data = file("app-ubuntu-init.sh")
-  count = 1
+//  count = 1
   tags = {
-    Name = "station-map-app-{count.index}"
+    Name = "app"
   }
 
   provisioner "remote-exec" {
@@ -79,13 +79,13 @@ resource "local_file" "private_key" {
 }
 
 output instance_dns_names {
-  value = aws_instance.instance[*].public_dns
+  value = aws_instance.instance.public_dns
 }
 
 output instance_ips {
-  value = aws_instance.instance[*].public_ip
+  value = aws_instance.instance.public_ip
 }
 
 output instance_ids {
-  value = aws_instance.instance[*].id
+  value = aws_instance.instance.id
 }
