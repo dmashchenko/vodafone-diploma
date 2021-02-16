@@ -55,6 +55,21 @@ resource "aws_instance" "etl" {
   }
 }
 
+resource "aws_s3_bucket" "raw_db" {
+  bucket = "s3-storage-dmashchenko"
+  acl    = "private"
+
+  tags = {
+    Name        = "raw-db"
+  }
+}
+
+resource "aws_s3_bucket_object" "object" {
+  bucket = aws_s3_bucket.raw_db.bucket
+  key    = "dataset"
+  source = "./test_data.csv"
+}
+
 resource "aws_security_group" "instance" {
   name = "ec2-instance"
   ingress {
@@ -138,6 +153,10 @@ output app_ip {
 
 output etl_ip {
   value = aws_instance.etl.public_ip
+}
+
+output s3_arn {
+  value = aws_s3_bucket.raw_db.arn
 }
 
 output instance_ids {
