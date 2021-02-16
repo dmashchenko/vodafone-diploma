@@ -64,6 +64,7 @@ resource "aws_security_group" "instance" {
     cidr_blocks = [
       "0.0.0.0/0"]
   }
+  #etl-spark-master
   ingress {
     from_port = 7077
     protocol = "tcp"
@@ -75,6 +76,21 @@ resource "aws_security_group" "instance" {
     from_port = 8080
     protocol = "tcp"
     to_port = 8080
+    cidr_blocks = [
+      "0.0.0.0/0"]
+  }
+  #spark-worker
+  ingress {
+    from_port = 8081
+    protocol = "tcp"
+    to_port = 8081
+    cidr_blocks = [
+      "0.0.0.0/0"]
+  }
+  ingress {
+    from_port = 7070
+    protocol = "tcp"
+    to_port = 7070
     cidr_blocks = [
       "0.0.0.0/0"]
   }
