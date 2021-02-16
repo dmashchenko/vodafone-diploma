@@ -12,14 +12,13 @@ provider "aws" {
   region = "us-east-1"
 }
 
-resource "aws_instance" "instance" {
+resource "aws_instance" "app" {
   ami = "ami-0885b1f6bd170450c"
   instance_type = "t2.micro"
   key_name = aws_key_pair.generated_key.key_name
   vpc_security_group_ids = [
     aws_security_group.instance.id]
-  //  user_data = file("app-ubuntu-init.sh")
-//  count = 1
+
   tags = {
     Name = "app"
   }
@@ -35,12 +34,47 @@ resource "aws_instance" "instance" {
   }
 }
 
+resource "aws_instance" "etl" {
+  ami = "ami-0885b1f6bd170450c"
+  instance_type = "t2.micro"
+  key_name = aws_key_pair.generated_key.key_name
+  vpc_security_group_ids = [
+    aws_security_group.instance.id]
+  tags = {
+    Name = "etl"
+  }
+
+  provisioner "remote-exec" {
+    script = "etl-ubuntu-init.sh"
+    connection {
+      type = "ssh"
+      user = "ubuntu"
+      private_key = file("${self.key_name}.pem")
+      host = self.public_ip
+    }
+  }
+}
+
 resource "aws_security_group" "instance" {
   name = "ec2-instance"
   ingress {
     from_port = 22
     protocol = "tcp"
     to_port = 22
+    cidr_blocks = [
+      "0.0.0.0/0"]
+  }
+  ingress {
+    from_port = 7077
+    protocol = "tcp"
+    to_port = 7077
+    cidr_blocks = [
+      "0.0.0.0/0"]
+  }
+  ingress {
+    from_port = 8080
+    protocol = "tcp"
+    to_port = 8080
     cidr_blocks = [
       "0.0.0.0/0"]
   }
@@ -79,13 +113,17 @@ resource "local_file" "private_key" {
 }
 
 output instance_dns_names {
-  value = aws_instance.instance.public_dns
+  value = aws_instance.app.public_dns
 }
 
-output instance_ips {
-  value = aws_instance.instance.public_ip
+output app_ip {
+  value = aws_instance.app.public_ip
+}
+
+output etl_ip {
+  value = aws_instance.etl.public_ip
 }
 
 output instance_ids {
-  value = aws_instance.instance.id
+  value = aws_instance.app.id
 }

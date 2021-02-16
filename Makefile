@@ -1,6 +1,7 @@
 PYTHON = python3
 
-$(eval APP-IP :=  $(shell cd infra; terraform output instance_ips))
+$(eval APP-IP :=  $(shell cd infra; terraform output app_ip))
+$(eval ETL-IP :=  $(shell cd infra; terraform output etl_ip))
 
 app-package:
 	mkdir -p out
