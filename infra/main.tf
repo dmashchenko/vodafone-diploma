@@ -57,7 +57,7 @@ resource "aws_instance" "etl" {
 
 resource "aws_s3_bucket" "raw_db" {
   bucket = "s3-storage-dmashchenko"
-  acl    = "private"
+  acl    = "public-read"
 
   tags = {
     Name        = "raw-db"
@@ -66,6 +66,7 @@ resource "aws_s3_bucket" "raw_db" {
 
 resource "aws_s3_bucket_object" "object" {
   bucket = aws_s3_bucket.raw_db.bucket
+  acl = "public-read"
   key    = "dataset"
   source = "./test_data.csv"
 }
