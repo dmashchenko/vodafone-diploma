@@ -81,8 +81,7 @@ resource "aws_db_instance" "warehouse" {
   username = "admin"
   password = "admin1234"
   publicly_accessible = true
-    vpc_security_group_ids = [
-    aws_security_group.instance.id]
+  vpc_security_group_ids = [aws_security_group.instance.id]
 }
 resource "aws_security_group" "instance" {
   name = "ec2-instance"
@@ -132,7 +131,7 @@ resource "aws_security_group" "instance" {
       "0.0.0.0/0"]
   }
 
-    # Allow inbound MySql requests
+  # Allow inbound MySql requests
   ingress {
     from_port = 3306
     to_port = 3306
@@ -186,6 +185,6 @@ output instance_ids {
   value = aws_instance.app.id
 }
 
-output warehouse_endpoint {
-  value = aws_db_instance.warehouse.endpoint
+output warehouse_host {
+  value = aws_db_instance.warehouse.address
 }
