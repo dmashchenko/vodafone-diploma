@@ -13,4 +13,4 @@ RAW_DATA_DIR = Path(config['DEFAULT']['RAW_DATA_DIR'])
 
 PREPROCESSED_DATA_DIR = PROJECT_ROOT / 'ml/data/preprocessed'
 
-RESULT_DIR = PROJECT_ROOT / 'result'
+OUT_DIR = PROJECT_ROOT / 'out'

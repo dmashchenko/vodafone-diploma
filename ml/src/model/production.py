@@ -1,7 +1,7 @@
 import pickle
 from pathlib import Path
 
-from config.constants import RESULT_DIR
+from config.constants import OUT_DIR
 
 
 class TrafficPredictor:
@@ -25,5 +25,5 @@ def build_traffic_predictor():
 
 
 def publish(predictor: TrafficPredictor):
-    Path(RESULT_DIR).mkdir(exist_ok=True)
-    pickle.dump(predictor, open(RESULT_DIR / 'traffic_predictor.pickle', 'wb'))
+    Path(OUT_DIR).mkdir(exist_ok=True)
+    pickle.dump(predictor, open(OUT_DIR / 'traffic_predictor.pickle', 'wb'))
