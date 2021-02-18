@@ -1,5 +1,9 @@
 ml/data/raw/
 
+catboost_info
+
+out
+
 .idea/
 *.iml
 
@@ -8,3 +12,10 @@ ml/data/raw/
 __pycache__
 
 venv/
+
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
