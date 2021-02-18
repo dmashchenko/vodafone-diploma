@@ -57,20 +57,33 @@ resource "aws_instance" "etl" {
 
 resource "aws_s3_bucket" "raw_db" {
   bucket = "s3-storage-dmashchenko"
-  acl    = "public-read"
+  acl = "public-read"
 
   tags = {
-    Name        = "raw-db"
+    Name = "raw-db"
   }
 }
 
 resource "aws_s3_bucket_object" "object" {
   bucket = aws_s3_bucket.raw_db.bucket
   acl = "public-read"
-  key    = "dataset"
+  key = "dataset"
   source = "./test_data.csv"
 }
 
+resource "aws_db_instance" "warehouse" {
+  allocated_storage = 20
+  storage_type = "gp2"
+  engine = "mysql"
+  engine_version = "5.7"
+  instance_class = "db.t2.micro"
+  name = "warehouse"
+  username = "admin"
+  password = "admin1234"
+  publicly_accessible = true
+    vpc_security_group_ids = [
+    aws_security_group.instance.id]
+}
 resource "aws_security_group" "instance" {
   name = "ec2-instance"
   ingress {
@@ -119,6 +132,15 @@ resource "aws_security_group" "instance" {
       "0.0.0.0/0"]
   }
 
+    # Allow inbound MySql requests
+  ingress {
+    from_port = 3306
+    to_port = 3306
+    protocol = "tcp"
+    cidr_blocks = [
+      "0.0.0.0/0"]
+  }
+
   # Allow all outbound requests
   egress {
     from_port = 0
@@ -162,4 +184,8 @@ output s3_arn {
 
 output instance_ids {
   value = aws_instance.app.id
+}
+
+output warehouse_endpoint {
+  value = aws_db_instance.warehouse.endpoint
 }
