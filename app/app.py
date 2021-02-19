@@ -19,7 +19,7 @@ try:
         port=3306,
         user="admin",
         password="admin1234",
-        database="base_station")
+        database="traffic")
 except mysql.connector.Error as err:
     if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
         print("Something is wrong with your user name or password")
@@ -39,13 +39,11 @@ def root():
 @app.route('/data')
 def data():
     cursor = cnx.cursor()
-    cursor.execute("SELECT * FROM traffic")
-    for (first_name, last_name, hire_date, x, xx) in cursor:
-        app.logger.info(f"{first_name}, {last_name} , {hire_date}, {x}, {xx}")
-    d = [{'long': 30.083, 'lat': 50.149, 'group': "A", 'size': 60},
-         {'long': 31.26, 'lat': 47.71, 'group': "C", 'size': 20},
-         {'long': 29.349, 'lat': 48.864, 'group': "B", 'size': 87}]
-    return json.dumps(d)
+    res = []
+    cursor.execute("SELECT lon ,lat FROM traffic_prediction")
+    for (lon, lat) in cursor:
+        res.append({'long': lon, 'lat': lat, 'group': "B", 'size': 60})
+    return json.dumps(res)
 
 
 @app.route('/ukraine.geo.json')
