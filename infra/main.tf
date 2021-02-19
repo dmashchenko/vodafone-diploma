@@ -82,6 +82,7 @@ resource "aws_db_instance" "warehouse" {
   password = "admin1234"
   publicly_accessible = true
   vpc_security_group_ids = [aws_security_group.instance.id]
+  skip_final_snapshot = true
 }
 resource "aws_security_group" "instance" {
   name = "ec2-instance"
