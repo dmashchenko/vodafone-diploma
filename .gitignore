@@ -19,3 +19,4 @@ venv/
 # .tfstate files
 *.tfstate
 *.tfstate.*
+/app/infra.cfg

@@ -1,12 +1,21 @@
+import os
+from pathlib import Path
+import configparser
 from flask import Flask
 from flask import render_template
 import mysql.connector
 from mysql.connector import errorcode
 import json
 
+config = configparser.ConfigParser()
+abspath_of_this_script = os.path.abspath(os.path.realpath(__file__))
+PROJECT_ROOT = Path(os.path.split(abspath_of_this_script)[0]).resolve()
+config.read(PROJECT_ROOT / './infra.cfg')
+host = config["default"]["warehouse_host"]
+
 try:
     cnx = mysql.connector.connect(
-        host="terraform-20210218095209829200000001.cfi5l15buuvj.us-east-1.rds.amazonaws.com",
+        host=host,
         port=3306,
         user="admin",
         password="admin1234",
@@ -18,8 +27,6 @@ except mysql.connector.Error as err:
         print("Database does not exist")
     else:
         print(err)
-# else:
-#     cnx.close()
 
 app = Flask(__name__)
 
