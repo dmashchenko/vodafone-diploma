@@ -24,12 +24,16 @@ var projection = d3.geoMercator()
     .translate([ width/2, height/2 ])
 
 
-// Create data for circles:
-var markers = [
-  {long: 30.083, lat: 50.149, group: "A", size: 34}, // corsica
-  {long: 31.26, lat: 47.71, group: "C", size: 14}, // nice
-  {long: 29.349, lat: 48.864, group: "B", size: 87}, // Paris
-];
+// // Create data for circles:
+// var markers = [
+//   {long: 30.083, lat: 50.149, group: "A", size: 34}, // corsica
+//   {long: 31.26, lat: 47.71, group: "C", size: 14}, // nice
+//   {long: 29.349, lat: 48.864, group: "B", size: 87}, // Paris
+// ];
+
+d3.json("data", function(data){
+  markers = data;
+})
 
 // Load external data and boot
 d3.json("ukraine.geo.json", function(data){
