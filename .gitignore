@@ -20,3 +20,6 @@ venv/
 *.tfstate
 *.tfstate.*
 /app/infra.cfg
+/infra/ssh-key.pem
+/ml/data/preprocessed/testdf.dump
+/ml/data/preprocessed/traindf.dump
