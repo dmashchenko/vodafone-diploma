@@ -3,9 +3,10 @@ import pickle
 from pyspark.context import SparkContext
 from pyspark.sql import SparkSession
 import configparser
-import pandas as pd
 import sys
 import numpy as np
+from pyspark.sql.functions import lit, udf, col, array
+from pyspark.sql.types import FloatType, StringType
 
 sys.path.append('ml/src')
 
@@ -40,27 +41,45 @@ host = sys.argv[1]
 
 jdbcurl = "jdbc:mysql://{0}:{1}/{2}?user={3}&password={4}".format(host, 3306, 'traffic', 'admin', 'admin1234')
 
-sparkdf = spark.createDataFrame(
-    [(0.001858, 30.083, 50.149, '2020-07-01'),
-     (0.303970, 31.26, 47.71, '2020-07-01'),
-     (31.978195, 29.349, 48.864, '2020-07-01')],
-    ("value", "lon", "lat", "month")
-)
+# sparkdf = spark.createDataFrame(
+#     [(0.001858, 30.083, 50.149, '2020-07-01'),
+#      (0.303970, 31.26, 47.71, '2020-07-01'),
+#      (31.978195, 29.349, 48.864, '2020-07-01')],
+#     ("value", "lon", "lat", "month")
+# )
+#
+# sparkdf.write.mode("append").jdbc(jdbcurl, table='traffic_prediction',
+#                                   properties={"driver": 'com.mysql.cj.jdbc.Driver'})
 
-sparkdf.write.mode("append").jdbc(jdbcurl, table='traffic_prediction',
-                                  properties={"driver": 'com.mysql.cj.jdbc.Driver'})
+# dbdf = spark.read.jdbc(jdbcurl, table='traffic_prediction', properties={"driver": 'com.mysql.cj.jdbc.Driver'})
+# dbdf.limit(10).show()
 
-dbdf = spark.read.jdbc(jdbcurl, table='traffic_prediction', properties={"driver": 'com.mysql.cj.jdbc.Driver'})
+columns = ["loc_lat", "loc_lon"]
+features = {"traff_m1", "traff_m2", "traff_m3", "traff_m4", "traff_m5"}
+columns.extend(features)
 
-dbdf.show()
+s3df = spark.read.option("header", True).csv("s3a://s3-storage-dmashchenko/dataset").select(columns)
 
-# df = spark.read.option("header", True).csv("s3a://s3-storage-dmashchenko/dataset")
-# df.select('target', 'traff_m1', 'traff_m2').limit(5).show()
-# pdf = df.limit(5).toPandas()
-# cast_to_float32(pdf)
-# pdf.set_index('abon_id', inplace=True)
-# print(pdf.columns)
-# print(pdf.shape)
-# print(pdf[['traff_m1', 'traff_m2', 'traff_m3', 'traff_m4', 'traff_m5']].shape)
-# print(model.predict(pdf[['traff_m1', 'traff_m2', 'traff_m3', 'traff_m4', 'traff_m5']]))
+
+@udf(returnType=FloatType())
+def predict(arr):
+    return float(arr[0]) + float(arr[1])
+
+
+predictiondf = s3df \
+    .withColumnRenamed("loc_lat", "lat") \
+    .withColumnRenamed("loc_lon", "lon") \
+    .withColumn("value", predict(array(features))) \
+    .select("lon", "lat", "value").withColumn("month", lit("2020-07-01")) \
+    .limit(5)
+
+predictiondf.show()
+
+predictiondf.write.mode("append").jdbc(jdbcurl, table='traffic_prediction',
+                                       properties={"driver": 'com.mysql.cj.jdbc.Driver'})
+
+resultdf = spark.read.jdbc(jdbcurl, table='traffic_prediction', properties={"driver": 'com.mysql.cj.jdbc.Driver'})
+
+resultdf.show()
+
 spark.stop()
