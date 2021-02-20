@@ -38,19 +38,29 @@ spark = SparkSession.builder.appName("ml-job") \
 
 host = sys.argv[1]
 
-jdbcurl = "jdbc:mysql://{0}:{1}/{2}?user={3}&password={4}".format(host, 3306, 'base_station', 'admin', 'admin1234')
+jdbcurl = "jdbc:mysql://{0}:{1}/{2}?user={3}&password={4}".format(host, 3306, 'traffic', 'admin', 'admin1234')
 
-dbdf = spark.read.jdbc(jdbcurl, table='traffic', properties={"driver": 'com.mysql.cj.jdbc.Driver'})
+sparkdf = spark.createDataFrame(
+    [(0.001858, 30.083, 50.149, '2020-07-01'),
+     (0.303970, 31.26, 47.71, '2020-07-01'),
+     (31.978195, 29.349, 48.864, '2020-07-01')],
+    ("value", "lon", "lat", "month")
+)
+
+sparkdf.write.mode("append").jdbc(jdbcurl, table='traffic_prediction',
+                                  properties={"driver": 'com.mysql.cj.jdbc.Driver'})
+
+dbdf = spark.read.jdbc(jdbcurl, table='traffic_prediction', properties={"driver": 'com.mysql.cj.jdbc.Driver'})
 
 dbdf.show()
 
-df = spark.read.option("header", True).csv("s3a://s3-storage-dmashchenko/dataset")
-df.select('target', 'traff_m1', 'traff_m2').limit(5).show()
-pdf = df.limit(5).toPandas()
-cast_to_float32(pdf)
-pdf.set_index('abon_id', inplace=True)
-print(pdf.columns)
-print(pdf.shape)
-print(pdf[['traff_m1', 'traff_m2', 'traff_m3', 'traff_m4', 'traff_m5']].shape)
+# df = spark.read.option("header", True).csv("s3a://s3-storage-dmashchenko/dataset")
+# df.select('target', 'traff_m1', 'traff_m2').limit(5).show()
+# pdf = df.limit(5).toPandas()
+# cast_to_float32(pdf)
+# pdf.set_index('abon_id', inplace=True)
+# print(pdf.columns)
+# print(pdf.shape)
+# print(pdf[['traff_m1', 'traff_m2', 'traff_m3', 'traff_m4', 'traff_m5']].shape)
 # print(model.predict(pdf[['traff_m1', 'traff_m2', 'traff_m3', 'traff_m4', 'traff_m5']]))
 spark.stop()
