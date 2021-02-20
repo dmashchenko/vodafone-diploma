@@ -36,18 +36,23 @@ def root():
     return render_template('index.html')
 
 
-@app.route('/data')
-def data():
+@app.route('/data/<float:threshold>')
+def data(threshold):
     cursor = cnx.cursor()
     res = []
-    cursor.execute("SELECT lon ,lat FROM traffic_prediction")
-    for (lon, lat) in cursor:
-        res.append({'long': lon, 'lat': lat, 'group': "B", 'size': 60})
+    query = f"SELECT * FROM " \
+            f"(SELECT lon, lat, SUM(value) AS traffic FROM traffic_prediction " \
+            f"WHERE month = '2020-07-01' GROUP BY lon, lat) AS stations WHERE traffic > {threshold}"
+
+    cursor.execute(query)
+    for (lon, lat, value) in cursor:
+        res.append({'long': lon, 'lat': lat, 'group': "B", 'size': value})
+
     return json.dumps(res)
 
 
 @app.route('/ukraine.geo.json')
-def map():
+def ukraine_map():
     return app.send_static_file('ukraine.geo.json')
 
 
