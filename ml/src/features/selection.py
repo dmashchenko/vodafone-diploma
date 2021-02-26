@@ -1,20 +1,46 @@
-from boruta import BorutaPy
+from sklearn.feature_selection import mutual_info_regression
+from sklearn.feature_selection import VarianceThreshold
 from lightgbm import LGBMRegressor
 import numpy as np
 import pandas as pd
+import time
 
 
-# import warnings;
-#
-# warnings.filterwarnings('ignore')
+def select_features_by_variance(X, threshold=0.9):
+    selector = VarianceThreshold(threshold=(threshold * (1 - threshold))).fit(X)
+    return X.columns[selector.get_support(indices=True)]
+
+
 # https://github.com/scikit-learn-contrib/boruta_py
 # https://towardsdatascience.com/boruta-explained-the-way-i-wish-someone-explained-it-to-me-4489d70e154a
+def boruta(X, y, iterations=10):
+    result = np.zeros((len(X.columns)))
 
-def boruta(X, y):
-    bor = BorutaPy(estimator=LGBMRegressor(num_boost_round=100), n_estimators='auto', max_iter=10)
-    bor.fit(np.array(X), np.array(y))
+    for iter_ in range(iterations):
+        start_time = time.time()
 
-    return X.columns[bor.support_].to_list(), X.columns[bor.support_weak_].to_list()
+        np.random.seed(iter_)
+        X_shadow = X.apply(np.random.permutation)
+        X_shadow.columns = ['shadow_' + feat for feat in X.columns]
+        X_boruta = pd.concat([X, X_shadow], axis=1)
+
+        boruta_regressor = LGBMRegressor(random_state=iter_)
+        boruta_regressor.fit(X_boruta, y)
+
+        feat_imp_X = boruta_regressor.feature_importances_[:len(X.columns)]
+        feat_imp_shadow = boruta_regressor.feature_importances_[len(X.columns):]
+
+        result += (feat_imp_X > feat_imp_shadow.max())
+
+        print(f"{iter_ + 1}. iteration is finished... {time.time() - start_time}s")
+
+    return pd.Series(index=X.columns, data=result)
+
+
+def mutual_info(X, y):
+    mi_scores = mutual_info_regression(X, y)
+    mi_scores = pd.Series(mi_scores, name="MI Scores", index=X.columns)
+    return mi_scores.sort_values(ascending=False)
 
 
 def non_empty_columns(df, nans_threshold=6):
