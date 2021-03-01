@@ -14,7 +14,8 @@ def select_features_by_variance(X, threshold=0.9):
 # https://github.com/scikit-learn-contrib/boruta_py
 # https://towardsdatascience.com/boruta-explained-the-way-i-wish-someone-explained-it-to-me-4489d70e154a
 def boruta(X, y, iterations=10):
-    result = np.zeros((len(X.columns)))
+    result_appearance = np.zeros((len(X.columns)))
+    result_importance = np.zeros((len(X.columns)))
 
     for iter_ in range(iterations):
         start_time = time.time()
@@ -30,11 +31,15 @@ def boruta(X, y, iterations=10):
         feat_imp_X = boruta_regressor.feature_importances_[:len(X.columns)]
         feat_imp_shadow = boruta_regressor.feature_importances_[len(X.columns):]
 
-        result += (feat_imp_X > feat_imp_shadow.max())
+        result_appearance += (feat_imp_X > feat_imp_shadow.max())
 
-        print(f"{iter_ + 1}. iteration is finished... {time.time() - start_time}s")
+        mx = feat_imp_X.max()
+        mn = feat_imp_X.min()
+        result_importance += np.array([(x - mn) / (mx - mn) for x in feat_imp_X])
 
-    return pd.Series(index=X.columns, data=result)
+        print(f"{iter_ + 1}. iteration is finished... {time.time() - start_time: .1f}s")
+
+    return pd.Series(index=X.columns, data=result_appearance), pd.Series(index=X.columns, data=result_importance)
 
 
 def mutual_info(X, y):
