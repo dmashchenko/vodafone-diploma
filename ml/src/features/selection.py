@@ -1,5 +1,7 @@
+from itertools import combinations
 from sklearn.feature_selection import mutual_info_regression
 from sklearn.feature_selection import VarianceThreshold
+from sklearn.model_selection import cross_val_score, ShuffleSplit
 from lightgbm import LGBMRegressor
 import numpy as np
 import pandas as pd
@@ -40,6 +42,28 @@ def boruta(X, y, iterations=10):
         print(f"{iter_ + 1}. iteration is finished... {time.time() - start_time: .1f}s")
 
     return pd.Series(index=X.columns, data=result_appearance), pd.Series(index=X.columns, data=result_importance)
+
+
+def grid_search(traindf, base_features, features_to_select, max_count_to_add=3):
+    result = []
+    regressor = LGBMRegressor()
+    for i in range(1, max_count_to_add + 1):
+        start_time = time.time()
+
+        result_features = []
+        result_score = []
+        for f in list(combinations(features_to_select, i)):
+            features = base_features + list(f)
+            score = cross_val_score(regressor, traindf[features], traindf.target,
+                                    scoring="neg_root_mean_squared_error",
+                                    cv=ShuffleSplit(n_splits=3, test_size=.33, random_state=0))
+            result_features.append(f)
+            result_score.append(score.mean())
+
+        result.append(pd.Series(index=result_features, data=result_score))
+        print(f"{i}. iteration is finished... {time.time() - start_time: .1f}s")
+
+    return result
 
 
 def mutual_info(X, y):
