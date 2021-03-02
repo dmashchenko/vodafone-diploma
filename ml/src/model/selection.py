@@ -12,6 +12,7 @@ from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.model_selection import GridSearchCV
 
 
 def estimate(df, rows=100):
@@ -57,3 +58,18 @@ def estimate(df, rows=100):
 def _test_and_print_result(model, label, X, y):
     s = cross_val_score(model, X, y, scoring="neg_root_mean_squared_error", cv=5)
     print(f"{label :30}\t\t RMSE: {s.mean(): .3f}\t\t\t STD: {s.std(): .2f}")
+
+
+def grid_search_cv(df, model, params, rows=1000):
+    sample = df.sample(rows, random_state=42)
+    scaler = StandardScaler()
+
+    X = scaler.fit_transform(sample.drop(columns={'target'}))
+    y = sample.target
+
+    grid = GridSearchCV(model, params, n_jobs=-1, cv=5, scoring='neg_root_mean_squared_error', verbose=1)
+    grid.fit(X, y)
+
+    print(f"Best params: \n{grid.best_params_}")
+
+    return grid.best_estimator_, scaler
