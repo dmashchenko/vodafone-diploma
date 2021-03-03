@@ -6,6 +6,9 @@ $(eval APP-IP :=  $(shell cd infra; terraform output app_ip))
 $(eval ETL-IP :=  $(shell cd infra; terraform output etl_ip))
 $(eval WAREHOUSE-HOST :=  $(shell cd infra; terraform output warehouse_host))
 
+project-init:
+	(cd ml/src; pwd; python3 -c "from data import preprocessor; preprocessor.load_raw_data_and_make_memory_optimized_dumps()")
+
 app-init-infra-config:
 	echo \[default\] > app/infra.cfg
 	(cd infra; terraform output) >> app/infra.cfg
