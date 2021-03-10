@@ -75,6 +75,20 @@ def get_city_by_geo(lat, lon, geo_df):
     return min_distance[1]
 
 
+def get_station_by_geo(lat, lon, station_dict):
+    point = (lat, lon)
+    min_distance = [sys.float_info.max, 'station']
+    if point in station_dict:
+        return station_dict[point]
+    else:
+        for key in station_dict.keys():
+            d = np.linalg.norm(np.array(key) - np.array(point))
+            if min_distance[0] > d:
+                min_distance[0] = d
+                min_distance[1] = key
+    return min_distance[1]
+
+
 def add_city_feature(df, geodf):
     geo_city_dict = {}
 
@@ -88,76 +102,94 @@ def add_city_feature(df, geodf):
     return df
 
 
-def add_station_feature(df):
-    station_dict = {}
-
-    for index, row in df.groupby(['loc_lon', 'loc_lat']).size().reset_index().iterrows():
-        lat_ = row['loc_lat']
-        lon_ = row['loc_lon']
-        station_dict[(lat_, lon_)] = f'station-{index}'
+def add_station_feature(df, station_dict=None):
+    if len(station_dict) == 0:
+        for index, row in df.groupby(['loc_lon', 'loc_lat']).size().reset_index().iterrows():
+            lat_ = row['loc_lat']
+            lon_ = row['loc_lon']
+            station_dict[(lat_, lon_)] = f'station-{index}'
+        df['station'] = df[['loc_lat', 'loc_lon']].dropna().apply(lambda x: station_dict[(x.loc_lat, x.loc_lon)],
+                                                                  axis=1)
+    else:
+        for index, row in df.groupby(['loc_lon', 'loc_lat']).size().reset_index().iterrows():
+            lat_ = row['loc_lat']
+            lon_ = row['loc_lon']
+            if (lat_, lon_) in station_dict:
+                continue
+            station_dict[(lat_, lon_)] = get_station_by_geo(lat_, lon_, station_dict)
 
     df['station'] = df[['loc_lat', 'loc_lon']].dropna().apply(lambda x: station_dict[(x.loc_lat, x.loc_lon)], axis=1)
-    return df
+    df.station.fillna('Other_stations', inplace=True)
+    return df, station_dict
 
 
 def _calc_traff_stats(df):
     result = {}
-    for city in df.columns:
-        city_col = df[city]
-        result[city] = [np.round(city_col.min(), decimals=3),
-                        np.round(city_col.max(), decimals=3),
-                        np.round(city_col.median(), decimals=3),
-                        np.round(city_col.mean(), decimals=3),
-                        np.round(city_col.std(), decimals=3)]
+    for cluster in df.columns:
+        cluster_col = df[cluster]
+        result[cluster] = [np.round(cluster_col.min(), decimals=3),
+                           np.round(cluster_col.max(), decimals=3),
+                           np.round(cluster_col.median(), decimals=3),
+                           np.round(cluster_col.mean(), decimals=3),
+                           np.round(cluster_col.std(), decimals=3)]
 
     return result
 
 
-def _city_traffic_by_month(city_stats, stats_index):
+def _cluster_traffic_by_month(cluster_stats):
     result = {}
-    for city in city_stats['traff_m1']:
-        result[city] = []
+    for cluster in cluster_stats['traff_m1']:
+        result[cluster] = []
         for i in range(5, 0, -1):
             traff_month = f'traff_m{i}'
-            result[city].append(city_stats[traff_month][city][stats_index])
+            cluster_ = cluster_stats[traff_month][cluster]
+            result[cluster].append([cluster_[2], cluster_[3]])
 
     return result
 
 
-def statistics_by_city(df):
-    city_stats = {}
+def statistics_by_cluster(df, cluster_feature):
+    cluster_stats = {}
     for i in range(5, 0, -1):
         col_name = f'traff_m{i}'
-        traffic_by_city_df = df[['city', col_name]].pivot(values=col_name, columns='city')
-        city_traffic_statistics = _calc_traff_stats(traffic_by_city_df)
-        city_stats[col_name] = city_traffic_statistics
+        print(f'working on {col_name}')
+        traffic_by_cluster_df = df[[cluster_feature, col_name]].pivot(values=col_name, columns=cluster_feature)
+        cluster_traffic_statistics = _calc_traff_stats(traffic_by_cluster_df)
+        print(f'cluster stats for: {col_name} is complete')
+        cluster_stats[col_name] = cluster_traffic_statistics
 
-    city_median_trends = {}
-    city_traffic_by_month_median = _city_traffic_by_month(city_stats, 2)
-    for city in city_traffic_by_month_median:
+    cluster_median_trends = {}
+    cluster_traffic_by_month = _cluster_traffic_by_month(cluster_stats)
+    for cluster in cluster_traffic_by_month:
         regr_result = linear_regression([1, 2, 3, 4, 5],
-                                        [city_traffic_by_month_median[city][0],
-                                         city_traffic_by_month_median[city][1],
-                                         city_traffic_by_month_median[city][2],
-                                         city_traffic_by_month_median[city][3],
-                                         city_traffic_by_month_median[city][4]])
-        city_median_trends[city] = np.round(regr_result[1], decimals=3)
+                                        [cluster_traffic_by_month[cluster][0][0],
+                                         cluster_traffic_by_month[cluster][1][0],
+                                         cluster_traffic_by_month[cluster][2][0],
+                                         cluster_traffic_by_month[cluster][3][0],
+                                         cluster_traffic_by_month[cluster][4][0]])
+        cluster_median_trends[cluster] = np.round(regr_result[1], decimals=3)
 
-    city_mean_trends = {}
-    city_traffic_by_month_mean = _city_traffic_by_month(city_stats, 3)
-    for city in city_traffic_by_month_mean:
+    cluster_mean_trends = {}
+    for cluster in cluster_traffic_by_month:
         regr_result = linear_regression([1, 2, 3, 4, 5],
-                                        [city_traffic_by_month_mean[city][0],
-                                         city_traffic_by_month_mean[city][1],
-                                         city_traffic_by_month_mean[city][2],
-                                         city_traffic_by_month_mean[city][3],
-                                         city_traffic_by_month_mean[city][4]])
-        city_mean_trends[city] = np.round(regr_result[1], decimals=3)
+                                        [cluster_traffic_by_month[cluster][0][1],
+                                         cluster_traffic_by_month[cluster][1][1],
+                                         cluster_traffic_by_month[cluster][2][1],
+                                         cluster_traffic_by_month[cluster][3][1],
+                                         cluster_traffic_by_month[cluster][4][1]])
+        cluster_mean_trends[cluster] = np.round(regr_result[1], decimals=3)
 
-    df['city_cluster_median_td'] = df['city'].apply(lambda x: city_median_trends[x])
-    df['city_cluster_mean_td'] = df['city'].apply(lambda x: city_mean_trends[x])
-    df['city_cluster_last_month_min'] = df['city'].apply(lambda x: city_stats['traff_m1'][x][0])
-    df['city_cluster_last_month_max'] = df['city'].apply(lambda x: city_stats['traff_m1'][x][1])
-    df['city_cluster_last_month_median'] = df['city'].apply(lambda x: city_stats['traff_m1'][x][2])
-    df['city_cluster_last_month_mean'] = df['city'].apply(lambda x: city_stats['traff_m1'][x][3])
-    df['city_cluster_last_month_std'] = df['city'].apply(lambda x: city_stats['traff_m1'][x][4])
+    df[f'{cluster_feature}_cluster_median_td'] = df[cluster_feature].apply(lambda x: cluster_median_trends[x])
+    df[f'{cluster_feature}_cluster_mean_td'] = df[cluster_feature].apply(lambda x: cluster_mean_trends[x])
+    df[f'{cluster_feature}_cluster_last_month_min'] = df[cluster_feature].apply(
+        lambda x: cluster_stats['traff_m1'][x][0])
+    df[f'{cluster_feature}_cluster_last_month_max'] = df[cluster_feature].apply(
+        lambda x: cluster_stats['traff_m1'][x][1])
+    df[f'{cluster_feature}_cluster_last_month_median'] = df[cluster_feature].apply(
+        lambda x: cluster_stats['traff_m1'][x][2])
+    df[f'{cluster_feature}_cluster_last_month_mean'] = df[cluster_feature].apply(
+        lambda x: cluster_stats['traff_m1'][x][3])
+    df[f'{cluster_feature}_cluster_last_month_std'] = df[cluster_feature].apply(
+        lambda x: cluster_stats['traff_m1'][x][4])
+
+    return cluster_stats, cluster_median_trends, cluster_mean_trends
