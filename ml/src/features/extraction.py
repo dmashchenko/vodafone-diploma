@@ -85,7 +85,7 @@ def get_station_by_geo(lat, lon, station_dict):
             d = np.linalg.norm(np.array(key) - np.array(point))
             if min_distance[0] > d:
                 min_distance[0] = d
-                min_distance[1] = key
+                min_distance[1] = station_dict[key]
     return min_distance[1]
 
 
@@ -102,25 +102,29 @@ def add_city_feature(df, geodf):
     return df
 
 
-def add_station_feature(df, station_dict=None):
-    if len(station_dict) == 0:
+def add_station_feature(df, train_station_dict=None):
+    if len(train_station_dict) == 0:
         for index, row in df.groupby(['loc_lon', 'loc_lat']).size().reset_index().iterrows():
             lat_ = row['loc_lat']
             lon_ = row['loc_lon']
-            station_dict[(lat_, lon_)] = f'station-{index}'
-        df['station'] = df[['loc_lat', 'loc_lon']].dropna().apply(lambda x: station_dict[(x.loc_lat, x.loc_lon)],
+            train_station_dict[(lat_, lon_)] = f'station-{index}'
+
+        df['station'] = df[['loc_lat', 'loc_lon']].dropna().apply(lambda x: train_station_dict[(x.loc_lat, x.loc_lon)],
                                                                   axis=1)
     else:
+        test_station_dict = {}
         for index, row in df.groupby(['loc_lon', 'loc_lat']).size().reset_index().iterrows():
             lat_ = row['loc_lat']
             lon_ = row['loc_lon']
-            if (lat_, lon_) in station_dict:
+            if (lat_, lon_) in test_station_dict:
                 continue
-            station_dict[(lat_, lon_)] = get_station_by_geo(lat_, lon_, station_dict)
+            test_station_dict[(lat_, lon_)] = get_station_by_geo(lat_, lon_, train_station_dict)
 
-    df['station'] = df[['loc_lat', 'loc_lon']].dropna().apply(lambda x: station_dict[(x.loc_lat, x.loc_lon)], axis=1)
+        df['station'] = df[['loc_lat', 'loc_lon']].dropna().apply(lambda x: test_station_dict[(x.loc_lat, x.loc_lon)],
+                                                                  axis=1)
+
     df.station.fillna('Other_stations', inplace=True)
-    return df, station_dict
+    return df, train_station_dict
 
 
 def _calc_traff_stats(df):
@@ -148,7 +152,7 @@ def _cluster_traffic_by_month(cluster_stats):
     return result
 
 
-def statistics_by_cluster(df, cluster_feature):
+def calculate_statistics_by_cluster(df, cluster_feature):
     cluster_stats = {}
     for i in range(5, 0, -1):
         col_name = f'traff_m{i}'
@@ -159,37 +163,33 @@ def statistics_by_cluster(df, cluster_feature):
         cluster_stats[col_name] = cluster_traffic_statistics
 
     cluster_median_trends = {}
+    cluster_mean_trends = {}
     cluster_traffic_by_month = _cluster_traffic_by_month(cluster_stats)
     for cluster in cluster_traffic_by_month:
-        regr_result = linear_regression([1, 2, 3, 4, 5],
-                                        [cluster_traffic_by_month[cluster][0][0],
-                                         cluster_traffic_by_month[cluster][1][0],
-                                         cluster_traffic_by_month[cluster][2][0],
-                                         cluster_traffic_by_month[cluster][3][0],
-                                         cluster_traffic_by_month[cluster][4][0]])
-        cluster_median_trends[cluster] = np.round(regr_result[1], decimals=3)
+        regr_median_result = linear_regression([1, 2, 3, 4, 5],
+                                               [cluster_traffic_by_month[cluster][0][0],
+                                                cluster_traffic_by_month[cluster][1][0],
+                                                cluster_traffic_by_month[cluster][2][0],
+                                                cluster_traffic_by_month[cluster][3][0],
+                                                cluster_traffic_by_month[cluster][4][0]])
+        cluster_median_trends[cluster] = np.round(regr_median_result[1], decimals=3)
 
-    cluster_mean_trends = {}
-    for cluster in cluster_traffic_by_month:
-        regr_result = linear_regression([1, 2, 3, 4, 5],
-                                        [cluster_traffic_by_month[cluster][0][1],
-                                         cluster_traffic_by_month[cluster][1][1],
-                                         cluster_traffic_by_month[cluster][2][1],
-                                         cluster_traffic_by_month[cluster][3][1],
-                                         cluster_traffic_by_month[cluster][4][1]])
-        cluster_mean_trends[cluster] = np.round(regr_result[1], decimals=3)
-
-    df[f'{cluster_feature}_cluster_median_td'] = df[cluster_feature].apply(lambda x: cluster_median_trends[x])
-    df[f'{cluster_feature}_cluster_mean_td'] = df[cluster_feature].apply(lambda x: cluster_mean_trends[x])
-    df[f'{cluster_feature}_cluster_last_month_min'] = df[cluster_feature].apply(
-        lambda x: cluster_stats['traff_m1'][x][0])
-    df[f'{cluster_feature}_cluster_last_month_max'] = df[cluster_feature].apply(
-        lambda x: cluster_stats['traff_m1'][x][1])
-    df[f'{cluster_feature}_cluster_last_month_median'] = df[cluster_feature].apply(
-        lambda x: cluster_stats['traff_m1'][x][2])
-    df[f'{cluster_feature}_cluster_last_month_mean'] = df[cluster_feature].apply(
-        lambda x: cluster_stats['traff_m1'][x][3])
-    df[f'{cluster_feature}_cluster_last_month_std'] = df[cluster_feature].apply(
-        lambda x: cluster_stats['traff_m1'][x][4])
+        regr_mean_result = linear_regression([1, 2, 3, 4, 5],
+                                             [cluster_traffic_by_month[cluster][0][1],
+                                              cluster_traffic_by_month[cluster][1][1],
+                                              cluster_traffic_by_month[cluster][2][1],
+                                              cluster_traffic_by_month[cluster][3][1],
+                                              cluster_traffic_by_month[cluster][4][1]])
+        cluster_mean_trends[cluster] = np.round(regr_mean_result[1], decimals=3)
 
     return cluster_stats, cluster_median_trends, cluster_mean_trends
+
+
+def apply_cluster_statistics(df, cluster, cluster_median_trends, cluster_mean_trends, cluster_stats):
+    df[f'{cluster}_cluster_median_td'] = df[cluster].apply(lambda x: cluster_median_trends[x])
+    df[f'{cluster}_cluster_mean_td'] = df[cluster].apply(lambda x: cluster_mean_trends[x])
+    df[f'{cluster}_cluster_last_month_min'] = df[cluster].apply(lambda x: cluster_stats['traff_m1'][x][0])
+    df[f'{cluster}_cluster_last_month_max'] = df[cluster].apply(lambda x: cluster_stats['traff_m1'][x][1])
+    df[f'{cluster}_cluster_last_month_median'] = df[cluster].apply(lambda x: cluster_stats['traff_m1'][x][2])
+    df[f'{cluster}_cluster_last_month_mean'] = df[cluster].apply(lambda x: cluster_stats['traff_m1'][x][3])
+    df[f'{cluster}_cluster_last_month_std'] = df[cluster].apply(lambda x: cluster_stats['traff_m1'][x][4])

@@ -1,17 +1,25 @@
 import pandas as pd
 import numpy as np
 
-from features.extraction import add_traff_features, statistic_columns, add_real_lon_lat, add_city_feature
+from features.extraction import add_traff_features, statistic_columns, add_real_lon_lat, add_city_feature, \
+    add_station_feature
 
 from config.constants import PROJECT_ROOT, PREPROCESSED_DATA_DIR, RAW_DATA_DIR
 
 INDEX_COLUMN = 'abon_id'
 
 
-def add_extra_features(df, geodf):
+def add_extra_features(df, geodf, station_dict=None):
+    if station_dict is None:
+        station_dict = {}
+    print('adding traffic features ...')
     df = add_traff_features(df)
+    print('restoring real lon/lat ...')
     df = add_real_lon_lat(df, geodf)
-    return add_city_feature(df, geodf[geodf.population >= 100000])
+    print('adding city cluster ...')
+    df = add_city_feature(df, geodf[geodf.population >= 100000])
+    print('adding station cluster ...')
+    return add_station_feature(df, station_dict)
 
 
 def prepare_geodf(result):
@@ -30,8 +38,8 @@ def prepare_geodf(result):
 class DataSet:
     geodf = prepare_geodf(pd.read_csv(RAW_DATA_DIR / 'extra/ua.csv',
                                       usecols=['lng', 'lat', 'city', 'population', 'capital']))
-    testdf = add_extra_features(pd.read_parquet(PREPROCESSED_DATA_DIR / 'testdf.dump'), geodf)
-    traindf = add_extra_features(pd.read_parquet(PREPROCESSED_DATA_DIR / 'traindf.dump'), geodf)
+    traindf, station_dict = add_extra_features(pd.read_parquet(PREPROCESSED_DATA_DIR / 'traindf.dump'), geodf)
+    testdf, _ = add_extra_features(pd.read_parquet(PREPROCESSED_DATA_DIR / 'testdf.dump'), geodf, station_dict)
     columns = traindf.columns.values
 
 
