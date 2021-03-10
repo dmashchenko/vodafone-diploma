@@ -1,5 +1,7 @@
 import numpy as np
 from lightgbm import LGBMRegressor
+from sklearn.linear_model import ElasticNet, BayesianRidge, TweedieRegressor, Ridge
+from sklearn.svm import LinearSVR, SVR
 
 TRAFF_COLS = ['traff_m1', 'traff_m2', 'traff_m3', 'traff_m4', 'traff_m5']
 MONTHS_GAP = 6.0
@@ -31,10 +33,11 @@ class LinearRegressor:
 
 
 class ClusterRegressor:
-    def __init__(self, cluster_feature='station', target='target'):
+    def __init__(self, cluster_feature='station', target='target', regressor=LGBMRegressor):
         self.cluster_feature = cluster_feature
         self.cluster_models = {}
         self.target = target
+        self.regressor = regressor
 
     def fit(self, df):
         clusters = df[self.cluster_feature].unique()
@@ -42,9 +45,10 @@ class ClusterRegressor:
         for cluster in clusters:
             cluster_df = df[df[self.cluster_feature] == cluster]
             X_train, y_train = cluster_df.drop(columns=[self.target, self.cluster_feature]), cluster_df[self.target]
-            regressor = LGBMRegressor()
-            regressor.fit(X_train, y_train)
-            self.cluster_models[cluster] = regressor
+            predictor = self.regressor()
+            predictor.fit(X_train, y_train)
+            self.cluster_models[cluster] = predictor
+            print(f'train for {cluster} cluster is finished')
 
     def predict(self, df):
         prediction = []
