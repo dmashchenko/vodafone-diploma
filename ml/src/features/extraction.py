@@ -33,6 +33,12 @@ def add_traff_features(df):
     df['traff_min'] = traff_df.min(axis=1)
     df['traff_max'] = traff_df.max(axis=1)
     df['traff_std'] = traff_df.std(axis=1)
+    df['traff_td'] = df \
+        .apply(
+        lambda x: np.round(
+            linear_regression([1, 2, 3, 4, 5], [x.traff_m5, x.traff_m4, x.traff_m3, x.traff_m2, x.traff_m1])[1],
+            decimals=1),
+        axis=1)
     return df
 
 
@@ -78,5 +84,68 @@ def add_city_feature(df, geodf):
         geo_city_dict[(lat_, lon_)] = get_city_by_geo(lat_, lon_, geodf)
 
     df['city'] = df[['loc_lat', 'loc_lon']].dropna().apply(lambda x: geo_city_dict[(x.loc_lat, x.loc_lon)], axis=1)
-    df.city.fillna('NoGeo', inplace=True)
+    df.city.fillna('Other_cities', inplace=True)
     return df
+
+
+def _calc_traff_stats(df):
+    result = {}
+    for city in df.columns:
+        city_col = df[city]
+        result[city] = [np.round(city_col.min(), decimals=3),
+                        np.round(city_col.max(), decimals=3),
+                        np.round(city_col.median(), decimals=3),
+                        np.round(city_col.mean(), decimals=3),
+                        np.round(city_col.std(), decimals=3)]
+
+    return result
+
+
+def _city_traffic_by_month(city_stats, stats_index):
+    result = {}
+    for city in city_stats['traff_m1']:
+        result[city] = []
+        for i in range(5, 0, -1):
+            traff_month = f'traff_m{i}'
+            result[city].append(city_stats[traff_month][city][stats_index])
+
+    return result
+
+
+def statistics_by_city(df):
+    city_stats = {}
+    for i in range(5, 0, -1):
+        col_name = f'traff_m{i}'
+        traffic_by_city_df = df[['city', col_name]].pivot(values=col_name, columns='city')
+        city_traffic_statistics = _calc_traff_stats(traffic_by_city_df)
+        city_stats[col_name] = city_traffic_statistics
+
+    city_median_trends = {}
+    city_traffic_by_month_median = _city_traffic_by_month(city_stats, 2)
+    for city in city_traffic_by_month_median:
+        regr_result = linear_regression([1, 2, 3, 4, 5],
+                                        [city_traffic_by_month_median[city][0],
+                                         city_traffic_by_month_median[city][1],
+                                         city_traffic_by_month_median[city][2],
+                                         city_traffic_by_month_median[city][3],
+                                         city_traffic_by_month_median[city][4]])
+        city_median_trends[city] = np.round(regr_result[1], decimals=3)
+
+    city_mean_trends = {}
+    city_traffic_by_month_mean = _city_traffic_by_month(city_stats, 3)
+    for city in city_traffic_by_month_mean:
+        regr_result = linear_regression([1, 2, 3, 4, 5],
+                                        [city_traffic_by_month_mean[city][0],
+                                         city_traffic_by_month_mean[city][1],
+                                         city_traffic_by_month_mean[city][2],
+                                         city_traffic_by_month_mean[city][3],
+                                         city_traffic_by_month_mean[city][4]])
+        city_mean_trends[city] = np.round(regr_result[1], decimals=3)
+
+    df['city_cluster_median_td'] = df['city'].apply(lambda x: city_median_trends[x])
+    df['city_cluster_mean_td'] = df['city'].apply(lambda x: city_mean_trends[x])
+    df['city_cluster_last_month_min'] = df['city'].apply(lambda x: city_stats['traff_m1'][x][0])
+    df['city_cluster_last_month_max'] = df['city'].apply(lambda x: city_stats['traff_m1'][x][1])
+    df['city_cluster_last_month_median'] = df['city'].apply(lambda x: city_stats['traff_m1'][x][2])
+    df['city_cluster_last_month_mean'] = df['city'].apply(lambda x: city_stats['traff_m1'][x][3])
+    df['city_cluster_last_month_std'] = df['city'].apply(lambda x: city_stats['traff_m1'][x][4])

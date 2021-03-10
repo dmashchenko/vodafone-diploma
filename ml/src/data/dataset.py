@@ -11,7 +11,7 @@ INDEX_COLUMN = 'abon_id'
 def add_extra_features(df, geodf):
     df = add_traff_features(df)
     df = add_real_lon_lat(df, geodf)
-    return add_city_feature(df, geodf)
+    return add_city_feature(df, geodf[geodf.population >= 100000])
 
 
 def prepare_geodf(result):
