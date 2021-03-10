@@ -1,4 +1,5 @@
 import numpy as np
+from lightgbm import LGBMRegressor
 
 TRAFF_COLS = ['traff_m1', 'traff_m2', 'traff_m3', 'traff_m4', 'traff_m5']
 MONTHS_GAP = 6.0
@@ -26,4 +27,33 @@ class LinearRegressor:
         b = residual_sum / residual_x_sum
         a = y_mean - b * x_mean
         result = a + b * (x.size + MONTHS_GAP)
-        return result if result > 0 else 0
+        return result if result > 0 else 0, a, b
+
+
+class ClusterRegressor:
+    def __init__(self, cluster_feature='station', target='target'):
+        self.cluster_feature = cluster_feature
+        self.cluster_models = {}
+        self.target = target
+
+    def fit(self, df):
+        clusters = df[self.cluster_feature].unique()
+        print(f'found {len(clusters)} clusters')
+        for cluster in clusters:
+            cluster_df = df[df[self.cluster_feature] == cluster]
+            X_train, y_train = cluster_df.drop(columns=[self.target, self.cluster_feature]), cluster_df[self.target]
+            regressor = LGBMRegressor()
+            regressor.fit(X_train, y_train)
+            self.cluster_models[cluster] = regressor
+
+    def predict(self, df):
+        prediction = []
+        y_test = []
+        for cluster in df[self.cluster_feature].unique():
+            cluster_df = df[df[self.cluster_feature] == cluster]
+            regressor = self.cluster_models[cluster]
+            res = regressor.predict(cluster_df.drop(columns=[self.target, self.cluster_feature]))
+            prediction = np.append(prediction, res)
+            y_test = np.append(y_test, cluster_df[self.target])
+
+        return y_test, prediction
