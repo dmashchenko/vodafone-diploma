@@ -88,6 +88,18 @@ def add_city_feature(df, geodf):
     return df
 
 
+def add_station_feature(df):
+    station_dict = {}
+
+    for index, row in df.groupby(['loc_lon', 'loc_lat']).size().reset_index().iterrows():
+        lat_ = row['loc_lat']
+        lon_ = row['loc_lon']
+        station_dict[(lat_, lon_)] = f'station-{index}'
+
+    df['station'] = df[['loc_lat', 'loc_lon']].dropna().apply(lambda x: station_dict[(x.loc_lat, x.loc_lon)], axis=1)
+    return df
+
+
 def _calc_traff_stats(df):
     result = {}
     for city in df.columns:
