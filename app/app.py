@@ -56,5 +56,10 @@ def ukraine_map():
     return app.send_static_file('ukraine.geo.json')
 
 
+@app.route('/stations.json')
+def stations_map():
+    return app.send_static_file('stations.json')
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=80)
