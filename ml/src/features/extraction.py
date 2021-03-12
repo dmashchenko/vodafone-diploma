@@ -43,15 +43,15 @@ def add_traff_features(df):
 
 
 def add_real_lon_lat(df, geodf):
-    guessed_geodf = pd.DataFrame(data={'city': ['Odesa', 'Chernivtsi', 'Kyiv', 'Kharkiv', 'Sumy', 'Dnipro', 'Mykolaiv'],
-                                       'loc_lon': [11.75, 10.6, 11.75, 12.85, 12.5, 12.55, 12.05],
-                                       'loc_lat': [14.74, 15.04, 15.36, 15.32, 15.49, 15.08, 14.85]}).set_index('city')
+    guessed_geodf = pd.DataFrame(data={
+        'city': ['Odesa', 'Uzhhorod', 'Rivne', 'Luhansk'],
+        'loc_lon': [11.73, 9.5, 10.71, 13.365],
+        'loc_lat': [14.75, 15.07, 15.365, 15.0725]}).set_index('city')
 
     geo = pd.merge(guessed_geodf, geodf, left_index=True, right_index=True)
 
-    lon_coeff = linear_regression(geo.loc_lon_x, geo.loc_lon_y)
-    lat_coeff = linear_regression(geo.loc_lat_x, geo.loc_lat_y)
-
+    lon_coeff = np.round(linear_regression(geo.loc_lon_x, geo.loc_lon_y), decimals=5)
+    lat_coeff = np.round(linear_regression(geo.loc_lat_x, geo.loc_lat_y), decimals=5)
     df['loc_lon'] = df['loc_lon'].apply(lambda x: np.round(lon_coeff[0] + x * lon_coeff[1], decimals=4))
     df['loc_lat'] = df['loc_lat'].apply(lambda x: np.round(lat_coeff[0] + x * lat_coeff[1], decimals=4))
     return df
@@ -185,7 +185,7 @@ def calculate_statistics_by_cluster(df, cluster_feature):
     return cluster_stats, cluster_median_trends, cluster_mean_trends
 
 
-def apply_cluster_statistics(df, cluster, cluster_median_trends, cluster_mean_trends, cluster_stats):
+def apply_cluster_statistics(df, cluster, cluster_stats, cluster_median_trends, cluster_mean_trends):
     df[f'{cluster}_cluster_median_td'] = df[cluster].apply(lambda x: cluster_median_trends[x])
     df[f'{cluster}_cluster_mean_td'] = df[cluster].apply(lambda x: cluster_mean_trends[x])
     df[f'{cluster}_cluster_last_month_min'] = df[cluster].apply(lambda x: cluster_stats['traff_m1'][x][0])
