@@ -1,4 +1,4 @@
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_score, ShuffleSplit
 from sklearn.experimental import enable_hist_gradient_boosting
 from sklearn.linear_model import LinearRegression, SGDRegressor, Lasso, Ridge, LassoLars, ElasticNet, BayesianRidge, \
     HuberRegressor, RANSACRegressor, TheilSenRegressor, PoissonRegressor, TweedieRegressor, PassiveAggressiveRegressor
@@ -44,7 +44,7 @@ def estimate(df, rows=100):
         KNeighborsRegressor,
         LinearSVR,
         # SVR, //time consuming
-        XGBRegressor,
+        # XGBRegressor,
         LGBMRegressor]:
         _test_and_print_result(model(), model.__name__, X, y)
 
@@ -56,7 +56,7 @@ def estimate(df, rows=100):
 
 
 def _test_and_print_result(model, label, X, y):
-    s = cross_val_score(model, X, y, scoring="neg_root_mean_squared_error", cv=5)
+    s = cross_val_score(model, X, y, scoring="neg_root_mean_squared_error", cv=ShuffleSplit(n_splits=5, test_size=.25, random_state=0))
     print(f"{label :30}\t\t RMSE: {s.mean(): .3f}\t\t\t STD: {s.std(): .2f}")
 
 
@@ -67,9 +67,10 @@ def grid_search_cv(df, model, params, rows=1000):
     X = scaler.fit_transform(sample.drop(columns={'target'}))
     y = sample.target
 
-    grid = GridSearchCV(model, params, n_jobs=-1, cv=5, scoring='neg_root_mean_squared_error', verbose=1)
+    grid = GridSearchCV(model, params, n_jobs=-1, cv=ShuffleSplit(n_splits=5, test_size=.25, random_state=0), scoring='neg_root_mean_squared_error', verbose=1)
     grid.fit(X, y)
 
+    print(f"Best score: \n{grid.best_score_}")
     print(f"Best params: \n{grid.best_params_}")
 
     return grid.best_estimator_, scaler
