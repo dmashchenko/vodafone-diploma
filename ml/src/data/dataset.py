@@ -66,3 +66,33 @@ def get_traffic_by_station_for_animation_df(stationdf):
     result = result.append(targetdf, ignore_index=True)
 
     return result
+
+
+def build_and_save_report(df, path):
+    reportdf = df[['loc_lat', 'loc_lon', 'station', 'prediction', 'traff_m1']] \
+        .groupby(['station']).agg({'prediction': 'sum', 'traff_m1': 'sum'})
+
+    station_location_df = df.drop_duplicates(subset=['station'])[['loc_lat', 'loc_lon', 'station']].set_index('station')
+
+    reportdf[['loc_lat', 'loc_lon']] = station_location_df[['loc_lat', 'loc_lon']]
+
+    mean = reportdf.traff_m1.mean()
+    reportdf = reportdf[(reportdf.prediction >= mean) & (reportdf.traff_m1 >= mean)]
+
+    reportdf.drop(index='Other_stations', axis=0, inplace=True)
+
+    reportdf['consuming_rate'] = np.round(reportdf.prediction / reportdf.traff_m1, decimals=2)
+
+    def groupfunc(x):
+        if x <= 1.0:
+            return 'C'
+        elif 1.0 < x < 1.5:
+            return 'B'
+        else:
+            return 'A'
+
+    reportdf['group'] = reportdf.apply(lambda x: groupfunc(x.consuming_rate), axis=1)
+
+    reportdf[['loc_lat', 'loc_lon', 'consuming_rate', 'group']].to_json(path_or_buf=path, orient='records')
+
+    return reportdf
